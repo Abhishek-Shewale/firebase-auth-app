@@ -85,7 +85,7 @@ export default function DashboardPage() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 p-6 md:ml-64">
+      <main className="flex-1 p-6 md:ml-6">
         {section === "home" && <DashboardHome user={user} />}
         {section === "profile" && <Profile user={user} />}
         {section === "orders" && <Orders user={user} />}
@@ -95,3 +95,4 @@ export default function DashboardPage() {
     </div>
   )
 }
+
