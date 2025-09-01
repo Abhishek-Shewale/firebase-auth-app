@@ -22,17 +22,22 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Check if user is verified in Firestore before setting as authenticated
         try {
           const userDoc = await getDoc(doc(db, "users", firebaseUser.uid))
-          
+  
           if (userDoc.exists()) {
             const userData = userDoc.data()
-            // Check for either email verification or phone verification
+  
             if (userData.isVerified === true || userData.isPhoneVerified === true) {
-              setUser(firebaseUser) // Only set user if verified
+              // ✅ merged user (Auth + Firestore)
+              const mergedUser = {
+                ...firebaseUser,
+                ...userData,
+                isVerifiedFinal: userData.isVerified === true || userData.isPhoneVerified === true
+              }
+              setUser(mergedUser)
             } else {
-              setUser(null) // Keep user as null if not verified
+              setUser(null)
             }
           } else {
             setUser(null)
@@ -48,7 +53,7 @@ export const AuthProvider = ({ children }) => {
     })
     return () => unsub()
   }, [])
-
+  
   // 🔹 Sign Up Flow (FIXED - prevent duplicates and improve error handling)
   const signUp = async (email, password, userType = null) => {
     try {

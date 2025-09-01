@@ -2,15 +2,22 @@
 
 import { useAuth } from "@/contexts/auth-context"
 import LoginPage from "@/components/login-page"
-import Dashboard from "@/components/dashboard"
 import { Loader2 } from "lucide-react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
+import { useEffect } from "react"
 
 export default function Home() {
   const { user, loading } = useAuth()
   const searchParams = useSearchParams()
   const verified = searchParams.get("verified")
   const email = searchParams.get("email")
+  const router = useRouter()
+
+  useEffect(() => {
+    if (user) {
+      router.push("/dashboard")  // redirect logged-in users
+    }
+  }, [user, router])
 
   if (loading) {
     return (
@@ -23,5 +30,6 @@ export default function Home() {
     )
   }
 
-  return user ? <Dashboard /> : <LoginPage verified={verified} email={email} />
+  // show login page if not logged in
+  return <LoginPage verified={verified} email={email} />
 }
