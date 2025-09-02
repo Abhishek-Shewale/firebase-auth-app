@@ -17,7 +17,6 @@ import { useState, useEffect } from "react"
 import { collection, onSnapshot } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
-
 import dynamic from "next/dynamic"
 const DashboardHome = dynamic(() => import("@/components/dashboard/dashboard-home"), { ssr: false })
 const Profile = dynamic(() => import("@/components/dashboard/profile"), { ssr: false })
@@ -43,7 +42,6 @@ export default function DashboardPage() {
     return () => unsub()
   }, [user])
 
-
   // Close sidebar when clicking outside on mobile
   useEffect(() => {
     const handleResize = () => {
@@ -54,20 +52,20 @@ export default function DashboardPage() {
 
     const handleClickOutside = (event) => {
       if (sidebarOpen && window.innerWidth < 768) {
-        const sidebar = document.getElementById('mobile-sidebar')
-        const menuButton = document.getElementById('menu-button')
+        const sidebar = document.getElementById("mobile-sidebar")
+        const menuButton = document.getElementById("menu-button")
         if (sidebar && !sidebar.contains(event.target) && !menuButton.contains(event.target)) {
           setSidebarOpen(false)
         }
       }
     }
 
-    window.addEventListener('resize', handleResize)
-    document.addEventListener('mousedown', handleClickOutside)
+    window.addEventListener("resize", handleResize)
+    document.addEventListener("mousedown", handleClickOutside)
 
     return () => {
-      window.removeEventListener('resize', handleResize)
-      document.removeEventListener('mousedown', handleClickOutside)
+      window.removeEventListener("resize", handleResize)
+      document.removeEventListener("mousedown", handleClickOutside)
     }
   }, [sidebarOpen])
 
@@ -89,7 +87,7 @@ export default function DashboardPage() {
   ]
 
   const getCurrentSectionLabel = () => {
-    const currentItem = menuItems.find(item => item.key === section)
+    const currentItem = menuItems.find((item) => item.key === section)
     return currentItem ? currentItem.label : "Dashboard"
   }
 
@@ -129,7 +127,6 @@ export default function DashboardPage() {
             )}
           </button>
         </div>
-
 
         {/* Sidebar */}
         <aside
@@ -184,7 +181,6 @@ export default function DashboardPage() {
           </div>
         </aside>
 
-
         {/* Main content with Navbar */}
         <div className="flex-1 flex flex-col min-w-0 md:overflow-hidden">
           {/* Desktop top bar */}
@@ -213,7 +209,6 @@ export default function DashboardPage() {
             </div>
           </main>
         </div>
-
       </div>
     </div>
   )
