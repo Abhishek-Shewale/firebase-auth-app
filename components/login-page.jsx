@@ -76,7 +76,7 @@ export default function LoginPage({ verified, email }) {
           <Button
             variant="ghost"
             onClick={handleBack}
-            className="flex items-center space-x-2 text-muted-foreground hover:text-foreground"
+            className="flex items-center space-x-2 text-muted-foreground cursor-pointer hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Back</span>
@@ -87,7 +87,7 @@ export default function LoginPage({ verified, email }) {
         <Card className="w-full">
           <CardContent className="p-6">
             {showVerification ? (
-              <EmailVerification 
+              <EmailVerification
                 email={pendingEmail}
                 onComplete={handleVerificationComplete}
                 onBack={handleBack}
@@ -95,22 +95,22 @@ export default function LoginPage({ verified, email }) {
             ) : (
               <>
                 {step === "userType" && (
-                  <UserTypeSelector 
-                    selectedType={selectedUserType} 
-                    onTypeSelect={handleUserTypeSelect} 
+                  <UserTypeSelector
+                    selectedType={selectedUserType}
+                    onTypeSelect={handleUserTypeSelect}
                   />
                 )}
 
                 {step === "authMethod" && (
-                  <AuthMethodSelector 
-                    selectedMethod={selectedAuthMethod} 
-                    onMethodSelect={handleAuthMethodSelect} 
+                  <AuthMethodSelector
+                    selectedMethod={selectedAuthMethod}
+                    onMethodSelect={handleAuthMethodSelect}
                   />
                 )}
 
                 {step === "emailAuth" && (
-                  <EmailAuthForm 
-                    userType={selectedUserType} 
+                  <EmailAuthForm
+                    userType={selectedUserType}
                     onBack={handleBack}
                     onVerificationStart={handleEmailVerificationStart}
                     successMessage={successMessage}
@@ -118,8 +118,8 @@ export default function LoginPage({ verified, email }) {
                 )}
 
                 {step === "phoneAuth" && (
-                  <PhoneAuthForm 
-                    userType={selectedUserType} 
+                  <PhoneAuthForm
+                    userType={selectedUserType}
                     onBack={handleBack}
                     successMessage={successMessage}
                   />

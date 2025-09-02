@@ -49,7 +49,7 @@ export default function EmailVerification({ email, onComplete, onBack }) {
 
       // Verify the code using the auth context
       const result = await verifyEmailCode(uid, code.trim())
-      
+
       if (result.success) {
         if (result.requiresSignIn) {
           // User needs to sign in manually
@@ -105,7 +105,7 @@ export default function EmailVerification({ email, onComplete, onBack }) {
 
       // Resend verification code using the auth context
       const result = await sendCustomVerification(uid, email)
-      
+
       if (result.success) {
         setInfo("New code sent to your email.")
       } else {
@@ -167,7 +167,7 @@ export default function EmailVerification({ email, onComplete, onBack }) {
 
         <Button
           type="submit"
-          className="w-full"
+          className="w-full cursor-pointer"
           disabled={loading || code.length !== 6}
         >
           {loading ? (

@@ -14,7 +14,7 @@ export default function AuthMethodSelector({ selectedMethod, onMethodSelect }) {
       <div className="grid grid-cols-2 gap-4">
         <Button
           variant={selectedMethod === "email" ? "default" : "outline"}
-          className="h-20 flex-col space-y-2"
+          className="h-20 flex-col space-y-2 cursor-pointer"
           onClick={() => onMethodSelect("email")}
         >
           <Mail className="h-6 w-6" />
@@ -23,7 +23,7 @@ export default function AuthMethodSelector({ selectedMethod, onMethodSelect }) {
 
         <Button
           variant={selectedMethod === "phone" ? "default" : "outline"}
-          className="h-20 flex-col space-y-2"
+          className="h-20 flex-col space-y-2 cursor-pointer"
           onClick={() => onMethodSelect("phone")}
         >
           <Phone className="h-6 w-6" />

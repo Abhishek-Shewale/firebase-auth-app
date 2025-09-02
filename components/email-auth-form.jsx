@@ -39,7 +39,7 @@ export default function EmailAuthForm({ userType, onVerificationStart, successMe
       if (isLogin) {
         // LOGIN FLOW
         const result = await signIn(email, password)
-        
+
         if (result.success && result.requiresVerification) {
           // User exists but not verified → notify parent to show verification
           setSuccess("Please verify your email to continue.")
@@ -131,7 +131,7 @@ export default function EmailAuthForm({ userType, onVerificationStart, successMe
                 className="absolute right-2 top-1/2 -translate-y-1/2"
                 tabIndex={-1}
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPassword ? <EyeOff className="h-4 w-4 cursor-pointer" /> : <Eye className="h-4 w-4 cursor-pointer" />}
               </button>
             </div>
           </div>
@@ -154,13 +154,13 @@ export default function EmailAuthForm({ userType, onVerificationStart, successMe
                   className="absolute right-2 top-1/2 -translate-y-1/2"
                   tabIndex={-1}
                 >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4 cursor-pointer" /> : <Eye className="h-4 w-4 cursor-pointer" />}
                 </button>
               </div>
             </div>
           )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full cursor-pointer" disabled={loading}>
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -179,7 +179,7 @@ export default function EmailAuthForm({ userType, onVerificationStart, successMe
               setError("")
               setSuccess("")
             }}
-            className="text-primary hover:underline"
+            className="text-primary hover:underline cursor-pointer"
           >
             {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
           </button>

@@ -1,46 +1,27 @@
 "use client"
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { useState, useEffect } from "react"
 import { db } from "@/lib/firebase"
 import {
   collection,
-  addDoc,
   doc,
   updateDoc,
   deleteDoc,
   getDocs,
   getDoc,
 } from "firebase/firestore"
+import AddressForm from "@/components/address-form"
 
 export default function Profile({ user }) {
   const [showForm, setShowForm] = useState(false)
-  const [editingId, setEditingId] = useState(null) // track address being edited
-  const [saving, setSaving] = useState(false)
+  const [editingAddress, setEditingAddress] = useState(null) // address being edited
   const [addresses, setAddresses] = useState([])
   const [defaultAddressId, setDefaultAddressId] = useState(null)
 
-  const [address, setAddress] = useState({
-    fullName: "",
-    phone: "",
-    country: "",
-    addressLine1: "",
-    addressLine2: "",
-    landmark: "",
-    pincode: "",
-    city: "",
-    state: "",
-    isDefault: false,
-  })
-  const [errors, setErrors] = useState({})
-
-  const requiredFields = ["fullName", "phone", "country", "addressLine1", "pincode", "city", "state"]
-
-  // Fetch addresses
+  // Fetch addresses + default when component mounts
   useEffect(() => {
     if (!user?.uid) return
     const fetchAddresses = async () => {
@@ -56,97 +37,30 @@ export default function Profile({ user }) {
     fetchAddresses()
   }, [user])
 
-  const validate = () => {
-    let newErrors = {}
-    requiredFields.forEach((field) => {
-      if (!address[field]) newErrors[field] = "This field is required"
-    })
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSave = async () => {
-    if (!validate()) return
-    if (!user?.uid) return alert("User not logged in")
-
-    setSaving(true)
-    try {
-      if (editingId) {
-        // update existing address
-        const addressRef = doc(db, "users", user.uid, "addresses", editingId)
-        await updateDoc(addressRef, address)
-
-        // update state
-        setAddresses(addresses.map((a) => (a.id === editingId ? { id: editingId, ...address } : a)))
-        if (address.isDefault) {
-          const userRef = doc(db, "users", user.uid)
-          await updateDoc(userRef, { defaultAddressId: editingId })
-          setDefaultAddressId(editingId)
-        }
-        alert("Address updated ✅")
-      } else {
-        // add new address
-        const addressesRef = collection(db, "users", user.uid, "addresses")
-        const docRef = await addDoc(addressesRef, address)
-
-        setAddresses([...addresses, { id: docRef.id, ...address }])
-        if (address.isDefault) {
-          const userRef = doc(db, "users", user.uid)
-          await updateDoc(userRef, { defaultAddressId: docRef.id })
-          setDefaultAddressId(docRef.id)
-        }
-        alert("Address saved ✅")
-      }
-
-      // reset
-      setShowForm(false)
-      setEditingId(null)
-      setAddress({
-        fullName: "",
-        phone: "",
-        country: "",
-        addressLine1: "",
-        addressLine2: "",
-        landmark: "",
-        pincode: "",
-        city: "",
-        state: "",
-        isDefault: false,
-      })
-    } catch (err) {
-      console.error("Error saving address:", err)
-      alert("Failed to save ❌")
-    } finally {
-      setSaving(false)
-    }
-  }
-
   const handleDelete = async (id) => {
     if (!user?.uid) return
     const confirmed = window.confirm("Are you sure you want to delete this address?")
     if (!confirmed) return
-  
+
     try {
       await deleteDoc(doc(db, "users", user.uid, "addresses", id))
       setAddresses(addresses.filter((a) => a.id !== id))
-  
+
       if (id === defaultAddressId) {
         const userRef = doc(db, "users", user.uid)
         await updateDoc(userRef, { defaultAddressId: null })
         setDefaultAddressId(null)
       }
-  
+
       alert("Address deleted ✅")
     } catch (err) {
       console.error(err)
       alert("Failed to delete ❌")
     }
   }
-  
 
   const handleEdit = (addr) => {
-    setAddress(addr)
-    setEditingId(addr.id)
+    setEditingAddress(addr)
     setShowForm(true)
   }
 
@@ -167,56 +81,33 @@ export default function Profile({ user }) {
 
         {/* Add/Edit Address */}
         {!showForm ? (
-          <Button onClick={() => setShowForm(true)}>Add Address</Button>
+          <Button className="cursor-pointer" onClick={() => setShowForm(true)}>Add Address</Button>
         ) : (
-          <div className="space-y-3">
-            <Input placeholder="Full Name *" value={address.fullName} onChange={(e) => setAddress({ ...address, fullName: e.target.value })} />
-            {errors.fullName && <p className="text-red-500 text-xs">{errors.fullName}</p>}
-
-            <Input placeholder="Mobile Number *" value={address.phone} onChange={(e) => setAddress({ ...address, phone: e.target.value })} />
-            {errors.phone && <p className="text-red-500 text-xs">{errors.phone}</p>}
-
-            <Input placeholder="Country *" value={address.country} onChange={(e) => setAddress({ ...address, country: e.target.value })} />
-            {errors.country && <p className="text-red-500 text-xs">{errors.country}</p>}
-
-            <Input placeholder="Flat, House no., Building, Company, Apartment *" value={address.addressLine1} onChange={(e) => setAddress({ ...address, addressLine1: e.target.value })} />
-            {errors.addressLine1 && <p className="text-red-500 text-xs">{errors.addressLine1}</p>}
-
-            <Input placeholder="Area, Street, Sector, Village" value={address.addressLine2} onChange={(e) => setAddress({ ...address, addressLine2: e.target.value })} />
-            <Input placeholder="Landmark" value={address.landmark} onChange={(e) => setAddress({ ...address, landmark: e.target.value })} />
-
-            <Input placeholder="Pincode *" value={address.pincode} onChange={(e) => setAddress({ ...address, pincode: e.target.value })} />
-            {errors.pincode && <p className="text-red-500 text-xs">{errors.pincode}</p>}
-
-            <Input placeholder="Town / City *" value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} />
-            {errors.city && <p className="text-red-500 text-xs">{errors.city}</p>}
-
-            <Input placeholder="State *" value={address.state} onChange={(e) => setAddress({ ...address, state: e.target.value })} />
-            {errors.state && <p className="text-red-500 text-xs">{errors.state}</p>}
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                checked={address.isDefault}
-                onCheckedChange={(checked) => setAddress({ ...address, isDefault: checked })}
-              />
-              <label className="text-sm">Make this my default address</label>
-            </div>
-
-            <div className="flex space-x-2">
-              <Button className="w-full" onClick={handleSave} disabled={saving}>
-                {saving ? "Saving..." : editingId ? "Update Address" : "Save Address"}
-              </Button>
-              <Button className="w-full" variant="outline" onClick={() => { setShowForm(false); setEditingId(null) }}>
-                Cancel
-              </Button>
-            </div>
-          </div>
+          <AddressForm
+            user={user}
+            initialAddress={editingAddress}
+            onSave={(newAddress) => {
+              if (editingAddress) {
+                // update existing in state
+                setAddresses(addresses.map((a) => (a.id === editingAddress.id ? newAddress : a)))
+              } else {
+                // add new
+                setAddresses([...addresses, newAddress])
+              }
+              setShowForm(false)
+              setEditingAddress(null)
+            }}
+            onCancel={() => {
+              setShowForm(false)
+              setEditingAddress(null)
+            }}
+          />
         )}
 
         {/* Address List */}
         {addresses.length > 0 && (
           <div className="space-y-4 mt-6">
-            <h3 className="font-semibold">Your Addresses</h3>
+            <h2 className="font-bold">Your Addresses</h2>
             {addresses.map((addr) => (
               <div key={addr.id} className="border p-3 rounded-lg space-y-1">
                 <p><strong>{addr.fullName}</strong> ({addr.phone})</p>
@@ -226,10 +117,13 @@ export default function Profile({ user }) {
                 <p>{addr.city}, {addr.state}, {addr.pincode}, {addr.country}</p>
 
                 <div className="flex items-center justify-between mt-2">
-                  {defaultAddressId === addr.id && <Badge variant="secondary">Default</Badge>}
+                  {defaultAddressId === addr.id && (
+                    <Badge className="bg-green-500 text-white">Default</Badge>
+                  )}
+
                   <div className="flex space-x-2">
-                    <Button size="sm" variant="outline" onClick={() => handleEdit(addr)}>Edit</Button>
-                    <Button size="sm" variant="outline" onClick={() => handleDelete(addr.id)}>Delete</Button>
+                    <Button className="cursor-pointer" size="sm" variant="outline" onClick={() => handleEdit(addr)}>Edit</Button>
+                    <Button className="cursor-pointer" size="sm" variant="outline" onClick={() => handleDelete(addr.id)}>Delete</Button>
                   </div>
                 </div>
               </div>
