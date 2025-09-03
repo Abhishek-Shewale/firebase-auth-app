@@ -35,12 +35,15 @@ export default function DashboardPage() {
   const [cartCount, setCartCount] = useState(0)
 
   useEffect(() => {
-    if (!user) return
+    if (!user) {
+      router.push("/")
+      return
+    }
     const unsub = onSnapshot(collection(db, "users", user.uid, "cart"), (snap) => {
       setCartCount(snap.size)
     })
     return () => unsub()
-  }, [user])
+  }, [user, router])
 
   // Close sidebar when clicking outside on mobile
   useEffect(() => {

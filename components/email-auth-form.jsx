@@ -49,7 +49,10 @@ export default function EmailAuthForm({ userType, onVerificationStart, successMe
         } else if (result.success && !result.requiresVerification) {
           // User is verified → go to dashboard
           setSuccess("Signed in successfully!")
-          router.replace("/")
+          // Redirect directly to dashboard after a short delay
+          setTimeout(() => {
+            window.location.href = "/dashboard"
+          }, 1000)
         } else {
           // Login failed
           throw new Error(result.error || "Sign in failed")
