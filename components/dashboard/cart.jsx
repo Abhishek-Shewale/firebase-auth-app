@@ -49,7 +49,7 @@ export default function Cart() {
     return (
       <div className="text-center text-muted-foreground">
         <p className="mb-4">Your cart is empty.</p>
-        <Button onClick={() => (window.location.href = "/dashboard?section=products")}>
+        <Button className="cursor-pointer" onClick={() => (window.location.href = "/dashboard?section=products")}>
           Browse Products
         </Button>
       </div>

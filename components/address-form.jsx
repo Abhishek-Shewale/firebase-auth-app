@@ -1,11 +1,14 @@
 "use client"
 
-import { useState } from "react"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+import { useState, useEffect } from "react"
+import { useAuth } from "@/contexts/auth-context"
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { collection, addDoc, doc, updateDoc } from "firebase/firestore"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
+import { toast } from "react-hot-toast"
 
 export default function AddressForm({ user, initialAddress = null, onSave, onCancel }) {
     const [address, setAddress] = useState(
@@ -25,7 +28,10 @@ export default function AddressForm({ user, initialAddress = null, onSave, onCan
     const [saving, setSaving] = useState(false)
 
     const handleSave = async () => {
-        if (!user?.uid) return alert("User not logged in")
+        if (!user?.uid) {
+            toast.error("User not logged in")
+            return
+        }
         setSaving(true)
         try {
             if (address.id) {
@@ -46,9 +52,10 @@ export default function AddressForm({ user, initialAddress = null, onSave, onCan
             }
 
             onSave?.(address) // notify parent
+            toast.success("Address saved successfully ✅")
         } catch (err) {
             console.error("Error saving address:", err)
-            alert("Failed to save ❌")
+            toast.error("Failed to save ❌")
         } finally {
             setSaving(false)
         }

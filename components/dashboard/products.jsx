@@ -1,14 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import { db } from "@/lib/firebase"
 import { useAuth } from "@/contexts/auth-context"
-import { doc, setDoc, getDoc } from "firebase/firestore"
+import { doc, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore"
 import AddressForm from "@/components/address-form"
 import { X } from "lucide-react"
+import { toast } from "react-hot-toast"
 
 const products = [
   {
@@ -63,26 +64,37 @@ export default function Products() {
   const [editing, setEditing] = useState(false)
 
   // 🛒 Add to cart
-  const handleAddToCart = async (product) => {
-    if (!user) return alert("Please login to add items to cart.")
-
-    const cartRef = doc(db, "users", user.uid, "cart", product.id)
-    const cartSnap = await getDoc(cartRef)
-
-    if (cartSnap.exists()) {
-      const currentQty = cartSnap.data().qty || 1
-      await setDoc(cartRef, { ...product, qty: currentQty + 1 }, { merge: true })
-    } else {
-      await setDoc(cartRef, { ...product, qty: 1 })
+  const addToCart = async (product) => {
+    if (!user) {
+      toast.error("Please login to add items to cart.")
+      return
     }
 
-    alert(`${product.name} added to cart ✅`)
+    try {
+      const cartRef = doc(db, "users", user.uid, "cart", product.id)
+      const cartDoc = await getDoc(cartRef)
+
+      if (cartDoc.exists()) {
+        // Update quantity
+        const currentQty = cartDoc.data().qty || 1
+        await updateDoc(cartRef, { qty: currentQty + 1 })
+      } else {
+        // Add new item
+        await setDoc(cartRef, { ...product, qty: 1, addedAt: new Date().toISOString() })
+      }
+
+      toast.success(`${product.name} added to cart ✅`)
+      // setCartCount(prev => prev + 1) // This state variable is not defined in the original file
+    } catch (error) {
+      console.error("Error adding to cart:", error)
+      toast.error("Failed to add to cart")
+    }
   }
 
   // 🔖 Prebook
-  const handlePrebook = async (product) => {
+  const prebookProduct = async (product) => {
     if (!user) {
-      alert("Please login to prebook.")
+      toast.error("Please login to prebook.")
       return
     }
 
@@ -142,13 +154,13 @@ export default function Products() {
               </ul>
             </CardContent>
             <CardFooter className="flex gap-2">
-              <Button className="flex-1 cursor-pointer" onClick={() => handlePrebook(product)}>
+              <Button className="flex-1 cursor-pointer" onClick={() => prebookProduct(product)}>
                 Prebook
               </Button>
               <Button
                 variant="outline"
                 className="flex-1 cursor-pointer"
-                onClick={() => handleAddToCart(product)}
+                onClick={() => addToCart(product)}
               >
                 Add to Cart
               </Button>
@@ -194,7 +206,7 @@ export default function Products() {
                   <Button className="cursor-pointer" variant="outline" onClick={() => setEditing(true)}>
                     Edit Address
                   </Button>
-                  <Button className="cursor-pointer" onClick={() => alert("Proceed to Razorpay payment...")}>
+                  <Button className="cursor-pointer" onClick={() => toast.info("Proceed to Razorpay payment...")}>
                     Continue to Payment
                   </Button>
                 </div>

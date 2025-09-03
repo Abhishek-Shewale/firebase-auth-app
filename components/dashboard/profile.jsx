@@ -14,6 +14,7 @@ import {
   getDoc,
 } from "firebase/firestore"
 import AddressForm from "@/components/address-form"
+import { toast } from "react-hot-toast"
 
 export default function Profile({ user }) {
   const [showForm, setShowForm] = useState(false)
@@ -37,25 +38,23 @@ export default function Profile({ user }) {
     fetchAddresses()
   }, [user])
 
-  const handleDelete = async (id) => {
-    if (!user?.uid) return
-    const confirmed = window.confirm("Are you sure you want to delete this address?")
-    if (!confirmed) return
-
+  const handleDeleteAddress = async (id) => {
     try {
-      await deleteDoc(doc(db, "users", user.uid, "addresses", id))
-      setAddresses(addresses.filter((a) => a.id !== id))
+      const userRef = doc(db, "users", user.uid)
+      const userDoc = await getDoc(userRef)
 
-      if (id === defaultAddressId) {
-        const userRef = doc(db, "users", user.uid)
-        await updateDoc(userRef, { defaultAddressId: null })
-        setDefaultAddressId(null)
+      if (userDoc.exists()) {
+        const userData = userDoc.data()
+        const addresses = userData.addresses || []
+        const updatedAddresses = addresses.filter(addr => addr.id !== id)
+
+        await updateDoc(userRef, { addresses: updatedAddresses })
+        setAddresses(updatedAddresses)
+        toast.success("Address deleted ✅")
       }
-
-      alert("Address deleted ✅")
-    } catch (err) {
-      console.error(err)
-      alert("Failed to delete ❌")
+    } catch (error) {
+      console.error("Error deleting address:", error)
+      toast.error("Failed to delete ❌")
     }
   }
 
@@ -123,7 +122,7 @@ export default function Profile({ user }) {
 
                   <div className="flex space-x-2">
                     <Button className="cursor-pointer" size="sm" variant="outline" onClick={() => handleEdit(addr)}>Edit</Button>
-                    <Button className="cursor-pointer" size="sm" variant="outline" onClick={() => handleDelete(addr.id)}>Delete</Button>
+                    <Button className="cursor-pointer" size="sm" variant="outline" onClick={() => handleDeleteAddress(addr.id)}>Delete</Button>
                   </div>
                 </div>
               </div>
