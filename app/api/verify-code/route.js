@@ -1,5 +1,5 @@
-import { doc, getDoc, deleteDoc, updateDoc, setDoc } from "firebase/firestore"
-import { db } from "@/lib/firebase"
+import admin from "firebase-admin/firestore"
+import { adminDb } from "@/lib/firebase-admin"
 
 export async function POST(req) {
   try {
@@ -8,22 +8,19 @@ export async function POST(req) {
       return new Response(JSON.stringify({ error: "uid and code required" }), { status: 400 })
     }
 
-    const verRef = doc(db, "emailVerifications", uid)
+    const verRef = adminDb.collection("emailVerifications").doc(uid)
     let verSnap
     try {
-      verSnap = await getDoc(verRef)
+      verSnap = await verRef.get()
     } catch (firestoreError) {
       console.error("Firestore read error:", firestoreError)
-      if (firestoreError.code === 'permission-denied') {
-        return new Response(JSON.stringify({ 
-          error: "Database access denied. Please check your Firebase configuration and security rules.",
-          details: "The application cannot read from the database."
-        }), { status: 500 })
-      }
-      throw firestoreError
+      return new Response(JSON.stringify({ 
+        error: "Database access error. Please try again.",
+        details: firestoreError.message
+      }), { status: 500 })
     }
 
-    if (!verSnap.exists()) {
+    if (!verSnap.exists) {
       return new Response(JSON.stringify({ error: "No verification request found" }), { status: 404 })
     }
 
@@ -31,20 +28,20 @@ export async function POST(req) {
     const now = Date.now()
 
     if (now > data.expiresAt) {
-      await deleteDoc(verRef).catch(() => {})
+      await verRef.delete().catch(() => {})
       return new Response(JSON.stringify({ error: "Code expired. Please request a new one." }), { status: 410 })
     }
 
     // Limit attempts
     if ((data.attempts ?? 0) >= 5) {
-      await deleteDoc(verRef).catch(() => {})
+      await verRef.delete().catch(() => {})
       return new Response(JSON.stringify({ error: "Too many attempts. Please request a new code." }), { status: 429 })
     }
 
     if (data.code !== code) {
       // increment attempts
       try {
-        await updateDoc(verRef, { attempts: (data.attempts ?? 0) + 1 })
+        await verRef.update({ attempts: (data.attempts ?? 0) + 1 })
       } catch (updateError) {
         console.error("Failed to update attempts:", updateError)
       }
@@ -52,15 +49,15 @@ export async function POST(req) {
     }
 
     // Mark user verified
-    const userRef = doc(db, "users", uid)
+    const userRef = adminDb.collection("users").doc(uid)
     try {
-      await updateDoc(userRef, { isVerified: true })
+      await userRef.update({ isVerified: true })
     } catch (updateError) {
       console.error("Failed to update user verification:", updateError)
       
       // if user doc doesn't exist for some reason, create it
       try {
-        await setDoc(userRef, { 
+        await userRef.set({ 
           email: data.email, 
           isVerified: true, 
           createdAt: new Date().toISOString(),
@@ -68,18 +65,15 @@ export async function POST(req) {
         })
       } catch (createError) {
         console.error("Error creating user doc on verify:", createError)
-        if (createError.code === 'permission-denied') {
-          return new Response(JSON.stringify({ 
-            error: "Database access denied. Please check your Firebase configuration and security rules.",
-            details: "The application cannot write to the database."
-          }), { status: 500 })
-        }
-        throw createError
+        return new Response(JSON.stringify({ 
+          error: "Failed to create user account. Please try again.",
+          details: createError.message
+        }), { status: 500 })
       }
     }
 
     // delete verification doc
-    await deleteDoc(verRef).catch(() => {})
+    await verRef.delete().catch(() => {})
 
     return new Response(JSON.stringify({ success: true }), { status: 200 })
   } catch (err) {

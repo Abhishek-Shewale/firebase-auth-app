@@ -1,5 +1,5 @@
-import { doc, getDoc } from "firebase/firestore"
-import { db } from "@/lib/firebase"
+import admin from "firebase-admin/firestore"
+import { adminDb } from "@/lib/firebase-admin"
 
 export async function POST(req) {
   try {
@@ -8,10 +8,10 @@ export async function POST(req) {
       return new Response(JSON.stringify({ error: "UID is required" }), { status: 400 })
     }
 
-    // Get user data from users collection
-    const userDoc = await getDoc(doc(db, "users", uid))
+    // Get user data from users collection using Admin SDK
+    const userDoc = await adminDb.collection("users").doc(uid).get()
     
-    if (!userDoc.exists()) {
+    if (!userDoc.exists) {
       return new Response(JSON.stringify({ error: "User not found" }), { status: 404 })
     }
 
