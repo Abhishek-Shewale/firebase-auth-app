@@ -239,35 +239,38 @@ export default function CheckoutForm({ user, product, affiliateCode, onSuccess }
                 </Button>
 
                 {/* Optional: keep the dev button too */}
-                {process.env.NODE_ENV === "development" && lastOrderId && process.env.NEXT_PUBLIC_TEST_CONFIRM_KEY && (
-                    <Button
-                        className="w-full cursor-pointer mt-2"
-                        variant="outline"
-                        onClick={async () => {
-                            try {
-                                const res = await fetch("/api/confirm-order", {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                        "Authorization": `Bearer ${process.env.NEXT_PUBLIC_TEST_CONFIRM_KEY}`,
-                                    },
-                                    body: JSON.stringify({ orderId: lastOrderId }),
-                                });
-                                const data = await res.json();
-                                if (res.ok && data.ok) {
-                                    toast.success(`Order marked paid (commission ₹${data.commission || 0})`);
-                                    onSuccess?.();
-                                } else {
-                                    throw new Error(data.error || "Confirm failed");
+                {process.env.NEXT_PUBLIC_SHOW_TEST_PAY === "true" &&
+                    process.env.NEXT_PUBLIC_TEST_CONFIRM_KEY &&
+                    lastOrderId && (
+                        <Button
+                            className="w-full cursor-pointer mt-2"
+                            variant="outline"
+                            onClick={async () => {
+                                try {
+                                    const res = await fetch("/api/confirm-order", {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "application/json",
+                                            "Authorization": `Bearer ${process.env.NEXT_PUBLIC_TEST_CONFIRM_KEY}`,
+                                        },
+                                        body: JSON.stringify({ orderId: lastOrderId }),
+                                    });
+                                    const data = await res.json();
+                                    if (res.ok && data.ok) {
+                                        toast.success(`Order marked paid (commission ₹${data.commission || 0})`);
+                                        onSuccess?.();
+                                    } else {
+                                        throw new Error(data.error || "Confirm failed");
+                                    }
+                                } catch (e) {
+                                    toast.error(e.message || "Server error");
                                 }
-                            } catch (e) {
-                                toast.error(e.message || "Server error");
-                            }
-                        }}
-                    >
-                        Mark Paid (Dev Only)
-                    </Button>
-                )}
+                            }}
+                        >
+                            Mark Paid (Dev Only)
+                        </Button>
+                    )}
+
             </div>
 
             <Modal
