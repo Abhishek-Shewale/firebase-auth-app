@@ -1,43 +1,29 @@
-import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
-import { updateAffiliateStats } from "@/lib/affiliate";
+import { NextResponse } from "next/server"
+import { adminDb } from "@/lib/firebase-admin"
+import { FieldValue } from "firebase-admin/firestore"
 
-// POST /api/create-order
 export async function POST(req) {
   try {
-    const body = await req.json();
+    const body = await req.json()
 
-    const {
-      productId, productName, price, quantity, total,
-      customer, affiliateCode
-    } = body || {};
+    // Extract affiliateCode + other order fields
+    const { affiliateCode, ...rest } = body
 
-    if (!productId || !productName || !price || !quantity || !total || !customer?.email) {
-      return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
-    }
+    // Generate an order ID
+    const orderRef = adminDb.collection("orders").doc()
+    const orderId = orderRef.id
 
-    const now = new Date();
-
-    // create pending order
-    const docRef = await adminDb.collection("orders").add({
-      productId,
-      productName,
-      price,
-      quantity,
-      total,
-      status: "pending",          // will be 'paid' after Razorpay success
+    // Create the order document
+    await orderRef.set({
+      ...rest,                        // customer details, items, totals
       affiliateCode: affiliateCode || null,
-      customer,
-      createdAt: now,
-      updatedAt: now,
-    });
+      status: "pending",              // always start as pending
+      createdAt: FieldValue.serverTimestamp(),
+    })
 
-    // NOTE: DO NOT update affiliate stats yet. Only after payment success.
-    // You’ll call /api/confirm-order after Razorpay success and run updateAffiliateStats there.
-
-    return NextResponse.json({ success: true, orderId: docRef.id });
+    return NextResponse.json({ ok: true, orderId })
   } catch (err) {
-    console.error("create-order error:", err);
-    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });
+    console.error("Error creating order:", err)
+    return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 })
   }
 }

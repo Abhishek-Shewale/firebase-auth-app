@@ -92,7 +92,7 @@ export default function Affiliate() {
   }
 
   const code = affiliateData.code;
-  const catalogLink = `https://studentai.in/products?ref=${code}`; // ✅ one link
+  const catalogLink = `https://firebase-auth-app-orcin.vercel.app/products?ref=${code}`; // ✅ one link
 
   return (
     <div className="space-y-6">
@@ -115,12 +115,12 @@ export default function Affiliate() {
           </div>
 
           <div>
-            <p className="text-sm text-gray-600 mb-1">Catalog link (share this):</p>
+            <p className="text-sm text-gray-600 mb-1">Share this link to get commissions:</p>
             <div className="flex items-center gap-2">
               <code className="bg-gray-100 px-3 py-2 rounded text-sm flex-1 break-all">{catalogLink}</code>
               <Button
                 variant="outline"
-                size="sm"
+                size="lg"
                 className="cursor-pointer"
                 onClick={() => navigator.clipboard.writeText(catalogLink).then(() => toast.success("Link copied!"))}
               >
@@ -147,36 +147,7 @@ export default function Affiliate() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Referred Orders</CardTitle>
-          <CardDescription>Sales attributed to your link</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {orders.length === 0 ? (
-            <p className="text-center text-gray-500 py-6">No orders yet.</p>
-          ) : (
-            <div className="space-y-3">
-              {orders.map((order) => (
-                <div key={order.id} className="border rounded p-3">
-                  <div className="flex justify-between">
-                    <div>
-                      <div className="font-medium">Order #{order.id.slice(-8)}</div>
-                      <div className="text-xs text-gray-600">
-                        {order.createdAt?.toDate ? new Date(order.createdAt.toDate()).toLocaleString() : ""}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium">₹{order.total}</div>
-                      <div className="text-xs text-green-600">+₹{(order.total * 0.1).toFixed(2)}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+
     </div>
   );
 }
