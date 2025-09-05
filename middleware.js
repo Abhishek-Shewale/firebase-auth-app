@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 
 // Define protected routes that require authentication
 const protectedRoutes = [
-  '/dashboard',
+  '/profile',
   '/api/create-order',
   '/api/get-affiliate-data',
   '/api/get-affiliate-orders',

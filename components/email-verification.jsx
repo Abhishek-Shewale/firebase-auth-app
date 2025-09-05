@@ -62,11 +62,11 @@ export default function EmailVerification({ email, onComplete, onBack }) {
           }, 2000)
         } else {
           // Verification successful and user is now signed in
-          setInfo("Email verified successfully! Redirecting to dashboard...")
+          setInfo("Email verified successfully! Redirecting to profile...")
           setIsRedirecting(true)
           setTimeout(() => {
             onComplete?.()
-            router.push("/dashboard")
+            router.push("/profile")
           }, 1500)
         }
       } else {
@@ -126,7 +126,7 @@ export default function EmailVerification({ email, onComplete, onBack }) {
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
           <div className="text-center space-y-2">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-            <p className="text-sm text-muted-foreground">Redirecting to dashboard...</p>
+            <p className="text-sm text-muted-foreground">Redirecting to profile...</p>
           </div>
         </div>
       )}

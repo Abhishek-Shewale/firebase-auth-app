@@ -17,7 +17,7 @@ const testRoutes = [
   {
     name: "Protected Routes (should require authentication)",
     routes: [
-      "http://localhost:3000/dashboard",
+      "http://localhost:3000/profile",
       "http://localhost:3000/api/create-order",
       "http://localhost:3000/api/get-affiliate-data?uid=test123"
     ]
@@ -67,10 +67,10 @@ async function runTests() {
   console.log("\n" + "=" .repeat(50))
   console.log("✅ Authentication test completed!")
   console.log("\n📝 Manual Tests to Perform:")
-  console.log("1. Try accessing /dashboard without logging in - should redirect to /")
+  console.log("1. Try accessing /profile without logging in - should redirect to /")
   console.log("2. Try accessing /products without logging in - should work")
-  console.log("3. Log in and try accessing /dashboard - should work")
-  console.log("4. Log out and try accessing /dashboard again - should redirect to /")
+  console.log("3. Log in and try accessing /profile - should work")
+  console.log("4. Log out and try accessing /profile again - should redirect to /")
 }
 
 // Only run if this file is executed directly

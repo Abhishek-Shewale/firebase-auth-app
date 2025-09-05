@@ -117,7 +117,7 @@ npm run dev
 3. **Email Auth**: Standard email/password with custom OTP verification
 4. **Phone Auth**: Phone number with custom SMS OTP verification
 5. **Verification**: Enter 6-digit codes sent via email/SMS
-6. **Dashboard**: View profile information and account details
+6. **Profile**: View profile information and account details
 
 ### Phone Verification Notes:
 - In development mode, verification codes are logged to the console

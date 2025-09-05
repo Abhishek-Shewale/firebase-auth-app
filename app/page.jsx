@@ -15,7 +15,7 @@ export default function Home() {
 
   useEffect(() => {
     if (user) {
-      router.push("/dashboard")  // redirect logged-in users
+      router.push("/profile")  // redirect logged-in users to profile
     }
   }, [user, router])
 

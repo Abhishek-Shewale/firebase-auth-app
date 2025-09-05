@@ -40,7 +40,7 @@ export default function Cart() {
   }
 
   const handleCheckout = () => {
-    window.location.href = "/dashboard?section=checkout"
+    window.location.href = "/profile?section=checkout"
   }
 
   if (loading) return <p>Loading cart...</p>
@@ -49,7 +49,7 @@ export default function Cart() {
     return (
       <div className="text-center text-muted-foreground">
         <p className="mb-4">Your cart is empty.</p>
-        <Button className="cursor-pointer" onClick={() => (window.location.href = "/dashboard?section=products")}>
+        <Button className="cursor-pointer" onClick={() => (window.location.href = "/profile?section=products")}>
           Browse Products
         </Button>
       </div>

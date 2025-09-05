@@ -6,7 +6,7 @@ Your Firebase authentication app now has comprehensive security measures in plac
 ## 🔐 Authentication Flow
 
 ### 1. **Middleware Protection** (`middleware.js`)
-- **Protected Routes**: `/dashboard` and all API routes that require authentication
+- **Protected Routes**: `/profile` and all API routes that require authentication
 - **Public Routes**: `/`, `/products`, and specific API routes for authentication
 - **API Route Protection**: Verifies Firebase ID tokens for protected API endpoints
 - **Page Route Protection**: Allows requests to proceed but relies on client-side auth checks
@@ -16,7 +16,7 @@ Your Firebase authentication app now has comprehensive security measures in plac
 - **Verification Check**: Only allows verified users (email or phone) to access protected content
 - **Auto-redirect**: Redirects unauthenticated users to login page
 
-### 3. **Dashboard Protection** (`app/dashboard/page.jsx`)
+### 3. **Profile Protection** (`app/profile/page.jsx`)
 - **Loading State**: Shows loading spinner while checking authentication
 - **User Verification**: Ensures user is both authenticated AND verified
 - **Auto-redirect**: Redirects to home page if not authenticated/verified
@@ -34,7 +34,7 @@ Your Firebase authentication app now has comprehensive security measures in plac
 ## 🛡️ Security Features
 
 ### Route Protection
-- ✅ **Dashboard**: Requires authentication + verification
+- ✅ **Profile**: Requires authentication + verification
 - ✅ **Products**: Public access (no authentication required)
 - ✅ **API Routes**: Protected routes require valid Firebase ID tokens
 - ✅ **Middleware**: Server-side route protection
@@ -54,7 +54,7 @@ Your Firebase authentication app now has comprehensive security measures in plac
 ## 📋 Protected vs Public Routes
 
 ### Protected Routes (Require Authentication)
-- `/dashboard` - User dashboard
+- `/profile` - User profile
 - `/api/create-order` - Create new orders
 - `/api/get-affiliate-data` - Get affiliate information
 - `/api/get-affiliate-orders` - Get affiliate orders
@@ -79,9 +79,9 @@ Your Firebase authentication app now has comprehensive security measures in plac
    - Visit `/` without logging in → Should show login page
 
 2. **Test Protected Access**:
-   - Visit `/dashboard` without logging in → Should redirect to `/`
-   - Log in and visit `/dashboard` → Should work
-   - Log out and visit `/dashboard` → Should redirect to `/`
+   - Visit `/profile` without logging in → Should redirect to `/`
+   - Log in and visit `/profile` → Should work
+   - Log out and visit `/profile` → Should redirect to `/`
 
 3. **Test API Endpoints**:
    - Make API calls to protected endpoints without auth → Should return 401
@@ -138,7 +138,7 @@ export const POST = withAuth(myApiHandler)
 
 ## ✅ Security Checklist
 
-- [x] Middleware protects all dashboard routes
+- [x] Middleware protects all profile routes
 - [x] API routes require authentication tokens
 - [x] Client-side auth context prevents unauthorized access
 - [x] User verification is enforced

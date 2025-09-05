@@ -81,13 +81,13 @@ export default function EmailAuthForm({ userType, onVerificationStart, successMe
             onVerificationStart(email) // This triggers parent's verification UI
           }
         } else if (result.success && !result.requiresVerification) {
-          // User is verified → go to dashboard
+          // User is verified → go to profile
           setSuccess("Signed in successfully!")
-          // Redirect directly to dashboard after a short delay
+          // Redirect directly to profile after a short delay
           if (!hasRedirected) {
             setHasRedirected(true)
             setTimeout(() => {
-              router.push("/dashboard")
+              router.push("/profile")
             }, 1500)
           }
         } else {
