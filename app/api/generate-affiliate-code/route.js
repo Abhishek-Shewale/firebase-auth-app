@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { generateAffiliateCode } from '@/lib/affiliate';
+import { withAuth } from '@/lib/auth-utils';
 
-export async function POST(request) {
+async function generateAffiliateCodeHandler(request) {
   try {
     const { uid, email } = await request.json();
 
@@ -21,3 +22,6 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+// Export the handler wrapped with authentication
+export const POST = withAuth(generateAffiliateCodeHandler);

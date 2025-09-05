@@ -9,6 +9,7 @@ import {
   fetchSignInMethodsForEmail,
   RecaptchaVerifier,
   signInWithPhoneNumber,
+  signInWithCustomToken,
 } from "firebase/auth"
 import { auth, db } from "@/lib/firebase"
 import { doc, getDoc, setDoc, deleteDoc } from "firebase/firestore"
@@ -35,9 +36,18 @@ export const AuthProvider = ({ children }) => {
                 ...userData,
                 isVerifiedFinal: userData.isVerified === true || userData.isPhoneVerified === true
               }
-              setUser(mergedUser)
+              // Only update user state if it's actually different
+              setUser(prevUser => {
+                if (prevUser && prevUser.uid === mergedUser.uid && prevUser.isVerifiedFinal === mergedUser.isVerifiedFinal) {
+                  return prevUser // No change needed
+                }
+                return mergedUser
+              })
             } else {
-              setUser(null)
+              setUser(prevUser => {
+                if (prevUser === null) return null // No change needed
+                return null
+              })
             }
           } else {
             setUser(null)
@@ -139,18 +149,9 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.error("signUp error:", err)
       
-      // Handle specific Firebase errors
-      if (err.code === "auth/email-already-in-use") {
-        return { 
-          success: false, 
-          error: "Email already registered. Please sign in instead.",
-          requiresVerification: false
-        }
-      }
-      
       return { 
         success: false, 
-        error: err.message || "Signup failed",
+        error: getAuthErrorMessage(err),
         requiresVerification: false
       }
     }
@@ -301,6 +302,38 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  // Convert Firebase errors to user-friendly messages
+  const getAuthErrorMessage = (error) => {
+    const errorCode = error.code || error.message
+    
+    switch (errorCode) {
+      case 'auth/invalid-credential':
+      case 'auth/wrong-password':
+      case 'auth/user-not-found':
+        return 'Invalid email or password. Please check your credentials and try again.'
+      case 'auth/email-already-in-use':
+        return 'This email is already registered. Please sign in instead.'
+      case 'auth/weak-password':
+        return 'Password is too weak. Please choose a stronger password.'
+      case 'auth/invalid-email':
+        return 'Please enter a valid email address.'
+      case 'auth/user-disabled':
+        return 'This account has been disabled. Please contact support.'
+      case 'auth/too-many-requests':
+        return 'Too many failed attempts. Please wait a moment and try again.'
+      case 'auth/network-request-failed':
+        return 'Network error. Please check your internet connection and try again.'
+      case 'auth/operation-not-allowed':
+        return 'This sign-in method is not enabled. Please contact support.'
+      default:
+        // Check if it's a Firebase error format
+        if (errorCode.includes('auth/')) {
+          return 'An authentication error occurred. Please try again.'
+        }
+        return error.message || 'Something went wrong. Please try again.'
+    }
+  }
+
   // 🔹 Sign In Flow (FIXED - handle unverified users)
   const signIn = async (email, password) => {
     try {
@@ -341,7 +374,7 @@ export const AuthProvider = ({ children }) => {
       // User is verified - they'll be set by onAuthStateChanged
       return { success: true, user: result.user, requiresVerification: false }
     } catch (err) {
-      return { success: false, error: err.message || "Sign in failed" }
+      return { success: false, error: getAuthErrorMessage(err) }
     }
   }
 
@@ -373,8 +406,7 @@ export const AuthProvider = ({ children }) => {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || "Verification failed")
       
-      // After successful verification, we need to sign the user in
-      // since they were signed out after signup
+      // After successful verification, try to auto-sign in the user
       try {
         // Get the user's email from the usersByEmail collection
         const userEmailRes = await fetch("/api/get-user-email", {
@@ -385,15 +417,45 @@ export const AuthProvider = ({ children }) => {
         
         if (userEmailRes.ok) {
           const { email } = await userEmailRes.json()
-          // The user will need to sign in manually since we don't have their password
-          // We'll redirect them to the login page with a success message
+          
+          // Try to get a custom token for auto sign-in
+          const signInRes = await fetch("/api/auto-signin-verified", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ uid, email }),
+          })
+          
+          if (signInRes.ok) {
+            const { customToken } = await signInRes.json()
+            
+            // Sign in the user with the custom token
+            await signInWithCustomToken(auth, customToken)
+            
+            // User is now signed in
+            return { success: true, requiresSignIn: false }
+          }
+        }
+      } catch (autoSignInError) {
+        console.error("Auto sign-in failed:", autoSignInError)
+      }
+      
+      // If auto sign-in fails, redirect to login page
+      try {
+        const userEmailRes = await fetch("/api/get-user-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uid }),
+        })
+        
+        if (userEmailRes.ok) {
+          const { email } = await userEmailRes.json()
           return { success: true, requiresSignIn: true, email }
         }
       } catch (signInError) {
         console.error("Error getting user email for sign in:", signInError)
       }
       
-      return { success: true }
+      return { success: true, requiresSignIn: true }
     } catch (err) {
       console.error("verifyEmailCode error:", err)
       return { success: false, error: err.message || "Verification failed" }

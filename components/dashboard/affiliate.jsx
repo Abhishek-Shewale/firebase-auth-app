@@ -23,14 +23,43 @@ export default function Affiliate() {
   const loadAffiliateData = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/get-affiliate-data?uid=${user.uid}`);
+      console.log('User object:', user);
+      console.log('User getIdToken method:', typeof user.getIdToken);
+
+      // Check if user has getIdToken method, if not, try to get it from auth
+      let idToken;
+      if (typeof user.getIdToken === 'function') {
+        idToken = await user.getIdToken();
+      } else {
+        // Import auth and get current user
+        const { auth } = await import('@/lib/firebase');
+        if (auth.currentUser) {
+          idToken = await auth.currentUser.getIdToken();
+        } else {
+          throw new Error('No authenticated user found');
+        }
+      }
+
+      const res = await fetch(`/api/get-affiliate-data?uid=${user.uid}`, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
+
+      console.log('API response status:', res.status);
+
       if (res.ok) {
         const data = await res.json();
+        console.log('Affiliate data received:', data);
         setAffiliateData(data);
         if (data?.code) await loadAffiliateOrders(data.code);
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Failed to load affiliate data:', res.status, errorData);
+        shadToast({ title: "Error", description: "Failed to load affiliate data", variant: "destructive" });
       }
     } catch (e) {
-      console.error(e);
+      console.error('Error in loadAffiliateData:', e);
       shadToast({ title: "Error", description: "Failed to load affiliate data", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -52,16 +81,38 @@ export default function Affiliate() {
   const generateAffiliateCode = async () => {
     try {
       setGenerating(true);
+
+      // Check if user has getIdToken method, if not, try to get it from auth
+      let idToken;
+      if (typeof user.getIdToken === 'function') {
+        idToken = await user.getIdToken();
+      } else {
+        // Import auth and get current user
+        const { auth } = await import('@/lib/firebase');
+        if (auth.currentUser) {
+          idToken = await auth.currentUser.getIdToken();
+        } else {
+          throw new Error('No authenticated user found');
+        }
+      }
+
       const res = await fetch("/api/generate-affiliate-code", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${idToken}`
+        },
         body: JSON.stringify({ uid: user.uid, email: user.email }),
       });
-      if (!res.ok) throw new Error("fail");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to generate code");
+      }
       await loadAffiliateData();
       toast.success("Affiliate code generated!");
-    } catch {
-      toast.error("Failed to generate code");
+    } catch (error) {
+      console.error('Generate affiliate code error:', error);
+      toast.error(error.message || "Failed to generate code");
     } finally {
       setGenerating(false);
     }

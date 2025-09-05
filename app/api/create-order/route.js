@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import { adminDb } from "@/lib/firebase-admin"
 import { FieldValue } from "firebase-admin/firestore"
+import { withAuth } from "@/lib/auth-utils"
 
-export async function POST(req) {
+async function createOrderHandler(req) {
   try {
     const body = await req.json()
 
@@ -27,3 +28,6 @@ export async function POST(req) {
     return NextResponse.json({ ok: false, error: "Server error" }, { status: 500 })
   }
 }
+
+// Export the handler wrapped with authentication
+export const POST = withAuth(createOrderHandler)

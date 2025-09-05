@@ -22,11 +22,44 @@ export default function EmailAuthForm({ userType, onVerificationStart, successMe
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(successMessage || "")
+  const [hasRedirected, setHasRedirected] = useState(false)
 
   const { signIn, signUp } = useAuth()
 
   const togglePasswordVisibility = () => setShowPassword(!showPassword)
   const toggleConfirmPasswordVisibility = () => setShowConfirmPassword(!showConfirmPassword)
+
+  // Convert Firebase errors to user-friendly messages
+  const getErrorMessage = (error) => {
+    const errorCode = error.code || error.message
+
+    switch (errorCode) {
+      case 'auth/invalid-credential':
+      case 'auth/wrong-password':
+      case 'auth/user-not-found':
+        return 'Invalid email or password. Please check your credentials and try again.'
+      case 'auth/email-already-in-use':
+        return 'This email is already registered. Please sign in instead.'
+      case 'auth/weak-password':
+        return 'Password is too weak. Please choose a stronger password.'
+      case 'auth/invalid-email':
+        return 'Please enter a valid email address.'
+      case 'auth/user-disabled':
+        return 'This account has been disabled. Please contact support.'
+      case 'auth/too-many-requests':
+        return 'Too many failed attempts. Please wait a moment and try again.'
+      case 'auth/network-request-failed':
+        return 'Network error. Please check your internet connection and try again.'
+      case 'auth/operation-not-allowed':
+        return 'This sign-in method is not enabled. Please contact support.'
+      default:
+        // Check if it's a Firebase error format
+        if (errorCode.includes('auth/')) {
+          return 'An authentication error occurred. Please try again.'
+        }
+        return error.message || 'Something went wrong. Please try again.'
+    }
+  }
 
   // ✅ Signup / Login submit (FIXED to use parent verification)
   const handleSubmit = async (e) => {
@@ -34,6 +67,7 @@ export default function EmailAuthForm({ userType, onVerificationStart, successMe
     setError("")
     setSuccess("")
     setLoading(true)
+    setHasRedirected(false)
 
     try {
       if (isLogin) {
@@ -50,9 +84,12 @@ export default function EmailAuthForm({ userType, onVerificationStart, successMe
           // User is verified → go to dashboard
           setSuccess("Signed in successfully!")
           // Redirect directly to dashboard after a short delay
-          setTimeout(() => {
-            window.location.href = "/dashboard"
-          }, 1000)
+          if (!hasRedirected) {
+            setHasRedirected(true)
+            setTimeout(() => {
+              router.push("/dashboard")
+            }, 1500)
+          }
         } else {
           // Login failed
           throw new Error(result.error || "Sign in failed")
@@ -76,7 +113,7 @@ export default function EmailAuthForm({ userType, onVerificationStart, successMe
         }
       }
     } catch (err) {
-      setError(err.message || "Something went wrong")
+      setError(getErrorMessage(err))
     } finally {
       setLoading(false)
     }

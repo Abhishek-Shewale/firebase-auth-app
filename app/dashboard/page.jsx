@@ -12,6 +12,7 @@ import {
   User,
   Menu,
   X,
+  Loader2,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { collection, onSnapshot } from "firebase/firestore"
@@ -26,24 +27,54 @@ const Products = dynamic(() => import("@/components/dashboard/products"), { ssr:
 const Cart = dynamic(() => import("@/components/dashboard/cart"), { ssr: false })
 
 export default function DashboardPage() {
-  const { user, logout } = useAuth()
+  const { user, loading, logout } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const section = searchParams.get("section") || "home"
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const [cartCount, setCartCount] = useState(0)
+  const [logoutLoading, setLogoutLoading] = useState(false)
+  const [hasRedirected, setHasRedirected] = useState(false)
+
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
 
   useEffect(() => {
     if (!user) {
-      router.push("/")
+      if (!hasRedirected) {
+        setHasRedirected(true)
+        router.push("/")
+      }
       return
     }
+
+    // Additional check: ensure user is verified
+    if (!user.isVerifiedFinal) {
+      if (!hasRedirected) {
+        setHasRedirected(true)
+        router.push("/")
+      }
+      return
+    }
+
+    // Reset redirect flag when user is properly authenticated
+    setHasRedirected(false)
+
     const unsub = onSnapshot(collection(db, "users", user.uid, "cart"), (snap) => {
       setCartCount(snap.size)
     })
     return () => unsub()
-  }, [user, router])
+  }, [user, router, hasRedirected])
 
   // Close sidebar when clicking outside on mobile
   useEffect(() => {
@@ -74,10 +105,13 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     try {
+      setLogoutLoading(true)
       await logout()
       router.push("/")
     } catch (error) {
       console.error("Logout error:", error)
+    } finally {
+      setLogoutLoading(false)
     }
   }
 
@@ -176,10 +210,20 @@ export default function DashboardPage() {
             <Button
               variant="outline"
               onClick={handleLogout}
+              disabled={logoutLoading}
               className="w-full justify-start h-10 cursor-pointer"
             >
-              <LogOut className="h-4 w-4 mr-3" />
-              Logout
+              {logoutLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-3 animate-spin" />
+                  Logging out...
+                </>
+              ) : (
+                <>
+                  <LogOut className="h-4 w-4 mr-3" />
+                  Logout
+                </>
+              )}
             </Button>
           </div>
         </aside>
