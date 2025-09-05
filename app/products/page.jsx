@@ -7,20 +7,24 @@ import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import CheckoutForm from "@/components/checkout-form";
 import Modal from "@/components/ui/modal";
+import { useAuth } from "@/contexts/auth-context";
 import toast from "react-hot-toast";
 
 // --- helpers ---
 function setAffiliateCookie(code) {
+    if (typeof window === 'undefined') return;
     const maxAge = 60 * 60 * 24 * 30; // 30 days
     document.cookie = `affiliateCode=${encodeURIComponent(code)}; Max-Age=${maxAge}; Path=/; SameSite=Lax`;
 }
 function getCookieAffiliateCode() {
+    if (typeof window === 'undefined') return null;
     const m = document.cookie.match(/(?:^|;\s*)affiliateCode=([^;]+)/);
     return m ? decodeURIComponent(m[1]) : null;
 }
 
 export default function ProductsCatalogPage() {
     const searchParams = useSearchParams();
+    const { user } = useAuth();
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState(null);
@@ -28,6 +32,9 @@ export default function ProductsCatalogPage() {
 
     // capture affiliate ref + track click once per session
     useEffect(() => {
+        // Only run on client side
+        if (typeof window === 'undefined') return;
+
         const ref = searchParams.get("ref");
         if (!ref) return;
         const code = ref.trim().toUpperCase();
@@ -65,6 +72,9 @@ export default function ProductsCatalogPage() {
 
     // effective affiliate code
     const refCode = useMemo(() => {
+        // Only run on client side
+        if (typeof window === 'undefined') return null;
+
         const fromUrl = searchParams.get("ref");
         if (fromUrl) return fromUrl.trim().toUpperCase();
 
@@ -159,6 +169,7 @@ export default function ProductsCatalogPage() {
             >
                 {selected && (
                     <CheckoutForm
+                        user={user}
                         product={selected}
                         affiliateCode={refCode}
                         onSuccess={() => setOpen(false)}
