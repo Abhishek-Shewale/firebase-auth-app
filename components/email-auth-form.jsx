@@ -82,13 +82,19 @@ export default function EmailAuthForm({ userType, onVerificationStart, successMe
           }
         } else if (result.success && !result.requiresVerification) {
           // User is verified → go to profile
-          setSuccess("Signed in successfully!")
-          // Redirect directly to profile after a short delay
+          console.log("Sign in successful, redirecting to profile")
+          setSuccess("Signed in successfully! Redirecting...")
+          // Redirect immediately - the auth context will handle the user state
           if (!hasRedirected) {
             setHasRedirected(true)
-            setTimeout(() => {
-              router.push("/profile")
-            }, 1500)
+            // Use replace to avoid back button issues
+            try {
+              router.replace("/profile")
+            } catch (routerError) {
+              console.error("Router error:", routerError)
+              // Fallback to window.location
+              window.location.href = "/profile"
+            }
           }
         } else {
           // Login failed

@@ -30,6 +30,7 @@ import toast from "react-hot-toast";
  * }
  */
 export default function AddressForm({ user, initialAddress = null, onSave, onCancel }) {
+
     const [address, setAddress] = useState(
         initialAddress || {
             fullName: "",
@@ -73,8 +74,15 @@ export default function AddressForm({ user, initialAddress = null, onSave, onCan
 
     const validate = () => {
         if (!address.fullName?.trim()) return "Full name is required";
-        if (!address.contactEmail?.trim()) return "Email is required";
-        if (!/\S+@\S+\.\S+/.test(address.contactEmail)) return "Enter a valid email";
+
+        // Email validation - different for public vs authenticated users
+        if (!user?.uid) {
+            // For public users: validate contactEmail
+            if (!address.contactEmail?.trim()) return "Email is required";
+            if (!/\S+@\S+\.\S+/.test(address.contactEmail)) return "Enter a valid email";
+        }
+        // For authenticated users: email is automatically set from user.email
+
         if (!address.phone?.trim()) return "Mobile number is required";
         if (!address.country?.trim()) return "Country is required";
         if (!address.addressLine1?.trim()) return "Address line is required";
@@ -102,7 +110,11 @@ export default function AddressForm({ user, initialAddress = null, onSave, onCan
         // 🔐 AUTH MODE: save/update under users/{uid}/addresses
         setSaving(true);
         try {
-            let saved = { ...address };
+            let saved = {
+                ...address,
+                // For authenticated users, always use their account email
+                contactEmail: user?.email || address.contactEmail
+            };
 
             if (address.id) {
                 const addressRef = doc(db, "users", user.uid, "addresses", address.id);
@@ -119,6 +131,9 @@ export default function AddressForm({ user, initialAddress = null, onSave, onCan
                 await updateDoc(userRef, { defaultAddressId: saved.id });
             }
 
+            // Note: Email is now read-only for authenticated users, so no need to update affiliate record
+            // The affiliate record will always use the user's account email
+
             setAddress(saved);
             onSave?.(saved);
             toast.success("Address saved ✅");
@@ -132,15 +147,26 @@ export default function AddressForm({ user, initialAddress = null, onSave, onCan
 
     return (
         <div className="space-y-3">
-            {/* Email (always shown; public + auth) */}
-            <Input
-                placeholder="Email *"
-                type="email"
-                value={address.contactEmail || ""}
-                onChange={(e) =>
-                    setAddress({ ...address, contactEmail: e.target.value })
-                }
-            />
+            {/* Email field - different behavior for public vs authenticated users */}
+            {user?.uid ? (
+                // For authenticated users: show read-only email
+                <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Email</label>
+                    <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-600">
+                        {user.email}
+                    </div>
+                </div>
+            ) : (
+                // For public users: show editable email field
+                <Input
+                    placeholder="Email *"
+                    type="email"
+                    value={address.contactEmail || ""}
+                    onChange={(e) =>
+                        setAddress({ ...address, contactEmail: e.target.value })
+                    }
+                />
+            )}
 
             <Input
                 placeholder="Full Name *"

@@ -27,7 +27,7 @@ export default function PhoneAuthForm({ userType, onBack, onVerificationStart })
     let verifier = null
     let retryCount = 0
     const maxRetries = 3
-    
+
     const initializeRecaptcha = () => {
       try {
         verifier = setupRecaptcha("recaptcha-container")
@@ -43,9 +43,9 @@ export default function PhoneAuthForm({ userType, onBack, onVerificationStart })
         }
       }
     }
-    
+
     initializeRecaptcha()
-    
+
     return () => {
       // Cleanup reCAPTCHA when component unmounts
       if (window.recaptchaVerifier && typeof window.recaptchaVerifier.clear === 'function') {
@@ -66,7 +66,7 @@ export default function PhoneAuthForm({ userType, onBack, onVerificationStart })
     try {
       const formattedPhone = phoneNumber.startsWith("+") ? phoneNumber : `+1${phoneNumber}`
       const result = await signUpWithPhone(formattedPhone, userType)
-      
+
       if (result.success && result.confirmationResult) {
         setConfirmationResult(result.confirmationResult)
         setStep("otp")
@@ -76,7 +76,7 @@ export default function PhoneAuthForm({ userType, onBack, onVerificationStart })
       }
     } catch (error) {
       setError(error.message)
-      
+
       // If it's a reCAPTCHA error, suggest refreshing
       if (error.message.includes('reCAPTCHA')) {
         setError("reCAPTCHA error. Please refresh the page and try again.")
@@ -93,12 +93,17 @@ export default function PhoneAuthForm({ userType, onBack, onVerificationStart })
 
     try {
       const result = await verifyPhoneOTP(confirmationResult, otp, userType)
-      
+
       if (result.success) {
-        setSuccess("Phone verified successfully!")
-        setTimeout(() => {
-          router.push("/")
-        }, 1500)
+        setSuccess("Phone verified successfully! Redirecting...")
+        // Redirect immediately to profile
+        try {
+          router.replace("/profile")
+        } catch (routerError) {
+          console.error("Router error:", routerError)
+          // Fallback to window.location
+          window.location.href = "/profile"
+        }
       } else {
         throw new Error(result.error || "Verification failed")
       }

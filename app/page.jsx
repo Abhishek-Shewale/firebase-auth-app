@@ -14,8 +14,17 @@ export default function Home() {
   const router = useRouter()
 
   useEffect(() => {
-    if (user) {
-      router.push("/profile")  // redirect logged-in users to profile
+    console.log("Main page - user state:", user)
+    if (user && user.isVerifiedFinal) {
+      console.log("User is verified, redirecting to profile")
+      // Use replace to avoid back button issues and ensure clean navigation
+      try {
+        router.replace("/profile")
+      } catch (routerError) {
+        console.error("Router error:", routerError)
+        // Fallback to window.location
+        window.location.href = "/profile"
+      }
     }
   }, [user, router])
 

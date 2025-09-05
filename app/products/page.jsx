@@ -172,6 +172,7 @@ export default function ProductsCatalogPage() {
                         user={user}
                         product={selected}
                         affiliateCode={refCode}
+                        isPublicCustomer={!user}
                         onSuccess={() => setOpen(false)}
                     />
                 )}

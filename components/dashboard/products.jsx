@@ -10,6 +10,8 @@ import { doc, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove } from "firebas
 import AddressForm from "@/components/address-form"
 import { X } from "lucide-react"
 import { toast } from "react-hot-toast"
+import CheckoutForm from "@/components/checkout-form";
+
 
 const products = [
   {
@@ -193,39 +195,36 @@ export default function Products() {
             {/* Modal Body */}
             {!editing && address ? (
               <>
-                <p><strong>{address.fullName}</strong></p>
-                <p>{address.phone}</p>
-                <p>{address.addressLine1}</p>
-                {address.addressLine2 && <p>{address.addressLine2}</p>}
-                {address.landmark && <p>Landmark: {address.landmark}</p>}
-                <p>
-                  {address.city}, {address.state} - {address.pincode}, {address.country}
-                </p>
-
-                <div className="flex gap-2 mt-4">
-                  <Button className="cursor-pointer" variant="outline" onClick={() => setEditing(true)}>
-                    Edit Address
-                  </Button>
-                  <Button className="cursor-pointer" onClick={() => toast.info("Proceed to Razorpay payment...")}>
-                    Continue to Payment
-                  </Button>
-                </div>
+                {/* Render the existing CheckoutForm — it will create order and handle dev confirm */}
+                <CheckoutForm
+                  user={user}
+                  product={selectedProduct}
+                  affiliateCode={null} // No affiliate code for prebook orders
+                  isPrebook={true}
+                  onSuccess={() => {
+                    // close modal and clear selection after successful confirm/flow
+                    setShowAddressModal(false);
+                    setSelectedProduct(null);
+                    toast.success("Prebook order confirmed — check your email");
+                  }}
+                />
               </>
             ) : (
               <AddressForm
                 user={user}
                 initialAddress={address}
                 onSave={(newAddr) => {
-                  setAddress(newAddr)
-                  setEditing(false)
-                  setShowAddressModal(false) // ✅ close after save
+                  setAddress(newAddr);
+                  setEditing(false);
+                  // keep modal open so user can continue to payment
                 }}
                 onCancel={() => {
-                  setEditing(false)
-                  setShowAddressModal(false) // ✅ close after cancel
+                  setEditing(false);
+                  setShowAddressModal(false);
                 }}
               />
             )}
+
           </div>
         </div>
       )}

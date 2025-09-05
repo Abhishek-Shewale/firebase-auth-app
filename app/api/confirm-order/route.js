@@ -25,14 +25,15 @@ export async function POST(req) {
     }
     const order = orderSnap.data();
     if (order.status === "paid") {
-      return NextResponse.json({ ok: true, message: "Order already paid" });
+      // return existing commission if present
+      return NextResponse.json({ ok: true, message: "Order already paid", commission: order.commission || 0 });
     }
 
     const total = Number(order.total || 0);
     const codeRaw = order.affiliateCode || order.firstRefCode || null;
     const code = typeof codeRaw === "string" ? codeRaw.trim().toUpperCase() : null;
 
-    // mark paid
+    // mark paid (status + paidAt)
     await orderRef.set(
       {
         status: "paid",
@@ -42,29 +43,42 @@ export async function POST(req) {
       { merge: true }
     );
 
-    // credit affiliate
+    // credit affiliate (with self-referral guard)
     let credited = false;
     let commission = 0;
 
-    if (code && total > 0) {
-      // mapping first
+    // Skip commission for prebook orders
+    if (order.isPrebook) {
+      await orderRef.set({ commission: 0, commissionStatus: "not_applicable" }, { merge: true });
+    } else if (code && total > 0) {
+      // mapping: prefer affiliatesByCode mapping; fallback to query
       const mapSnap = await adminDb.collection("affiliatesByCode").doc(code).get();
-      let affRef = null;
+      let affiliateUid = null;
       if (mapSnap.exists) {
-        const { uid } = mapSnap.data() || {};
-        if (uid) affRef = adminDb.collection("affiliates").doc(uid);
+        affiliateUid = mapSnap.data()?.uid || null;
       }
-      if (!affRef) {
+      if (!affiliateUid) {
         const q = await adminDb.collection("affiliates").where("code", "==", code).limit(1).get();
-        if (!q.empty) affRef = q.docs[0].ref;
+        if (!q.empty) affiliateUid = q.docs[0].id;
       }
-      if (affRef) {
+
+      const orderCustomerUid = order.customerUid || null;
+
+      if (affiliateUid && orderCustomerUid && affiliateUid === orderCustomerUid) {
+        // Self-order -- skip crediting
+        commission = 0;
+        credited = false;
+        await orderRef.set({ commission: 0, commissionStatus: "skipped_self" }, { merge: true });
+      } else if (affiliateUid) {
+        const affRef = adminDb.collection("affiliates").doc(affiliateUid);
         const affSnap = await affRef.get();
         const rate =
           affSnap.exists && typeof affSnap.data().commissionRate === "number"
             ? affSnap.data().commissionRate
             : 0.10; // default 10%
         commission = Math.round(total * rate);
+
+        // update affiliate counters
         await affRef.set(
           {
             totalOrders: FieldValue.increment(1),
@@ -73,24 +87,53 @@ export async function POST(req) {
             lastSaleAt: FieldValue.serverTimestamp(),
           },
           { merge: true }
-          
         );
-        
+
         credited = true;
+        // persist commissionStatus below
       }
+    } else if (!order.isPrebook) {
+      // no code or zero total: ensure commission exists as 0 (only for non-prebook orders)
+      await orderRef.set({ commission: 0, commissionStatus: "unsettled" }, { merge: true });
     }
 
-    // send email to customer (track your order)
+    // persist commission into the order document (important!)
+    if (commission > 0) {
+      await orderRef.set({ commission, commissionStatus: credited ? "credited" : "unsettled" }, { merge: true });
+    } else if (!order.isPrebook) {
+      // ensure commission field exists (0) and commissionStatus is set (only for non-prebook orders)
+      const statusVal = credited ? "credited" : (order.commissionStatus || "unsettled");
+      await orderRef.set({ commission: 0, commissionStatus: statusVal }, { merge: true });
+    }
+
+    // send email to customer (best-effort)
     try {
       const email = order?.customer?.email;
       if (email) {
-        const subject = `Your Student AI order is confirmed — #${orderId}`;
+        const orderType = order.isPrebook ? "Prebook" : (order.type === "public" ? "Public" : "Affiliate");
+        const subject = `Your Student AI ${orderType.toLowerCase()} order is confirmed — #${orderId}`;
+        
+        let commissionText = '';
+        if (!order.isPrebook && commission > 0) {
+          commissionText = `<p><b>Referral Commission:</b> ₹${commission}</p>`;
+        } else if (!order.isPrebook) {
+          commissionText = `<p><b>Referral Commission:</b> ₹0 (No referral code applied)</p>`;
+        }
+        
         const html = `
           <div style="font-family:Inter,system-ui,Arial,sans-serif;max-width:560px;margin:auto;padding:20px">
-            <h2>Thanks for your purchase! 🎉</h2>
-            <p>Your order <b>#${orderId}</b> has been confirmed.</p>
-            <p><b>Product:</b> ${order.productName || ""}</p>
-            <p><b>Total:</b> ₹${total}</p>
+            <h2>Thanks for your ${orderType.toLowerCase()} order! 🎉</h2>
+            <p>Your ${orderType.toLowerCase()} order <b>#${orderId}</b> has been confirmed and payment received.</p>
+            <p><b>Product(s):</b> ${order.items?.map(i => i.productName).join(", ") || order.productName || ""}</p>
+            <p><b>Total Amount:</b> ₹${total}</p>
+            ${commissionText}
+            <hr/>
+            <p><b>Delivery Address:</b></p>
+            <p>${order.customer?.name}<br/>
+            ${order.customer?.address?.addressLine}<br/>
+            ${order.customer?.address?.addressLine2 ? order.customer.address.addressLine2 + '<br/>' : ''}
+            ${order.customer?.address?.city}, ${order.customer?.address?.state} ${order.customer?.address?.pincode}<br/>
+            ${order.customer?.address?.country}</p>
             <hr/>
             <p>You can track your order anytime using this ID: <b>${orderId}</b>.</p>
             <p>Keep this for your records. If you have questions, just reply to this email.</p>

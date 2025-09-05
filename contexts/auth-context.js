@@ -22,12 +22,15 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("Auth state changed:", firebaseUser ? firebaseUser.uid : "No user")
+      
       if (firebaseUser) {
         try {
           const userDoc = await getDoc(doc(db, "users", firebaseUser.uid))
   
           if (userDoc.exists()) {
             const userData = userDoc.data()
+            console.log("User data from Firestore:", userData)
   
             if (userData.isVerified === true || userData.isPhoneVerified === true) {
               // ✅ merged user (Auth + Firestore)
@@ -36,20 +39,14 @@ export const AuthProvider = ({ children }) => {
                 ...userData,
                 isVerifiedFinal: userData.isVerified === true || userData.isPhoneVerified === true
               }
-              // Only update user state if it's actually different
-              setUser(prevUser => {
-                if (prevUser && prevUser.uid === mergedUser.uid && prevUser.isVerifiedFinal === mergedUser.isVerifiedFinal) {
-                  return prevUser // No change needed
-                }
-                return mergedUser
-              })
+              console.log("Setting verified user:", mergedUser.uid)
+              setUser(mergedUser)
             } else {
-              setUser(prevUser => {
-                if (prevUser === null) return null // No change needed
-                return null
-              })
+              console.log("User not verified, setting to null")
+              setUser(null)
             }
           } else {
+            console.log("User doc not found, setting to null")
             setUser(null)
           }
         } catch (error) {
@@ -57,6 +54,7 @@ export const AuthProvider = ({ children }) => {
           setUser(null)
         }
       } else {
+        console.log("No Firebase user, setting to null")
         setUser(null)
       }
       setLoading(false)

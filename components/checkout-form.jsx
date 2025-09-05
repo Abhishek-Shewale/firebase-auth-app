@@ -9,16 +9,36 @@ import AddressForm from "@/components/address-form";
 import Modal from "@/components/ui/modal";
 import toast from "react-hot-toast";
 
-export default function CheckoutForm({ user, product, affiliateCode, onSuccess }) {
+export default function CheckoutForm({
+    user,
+    product,
+    cartItems = null,
+    affiliateCode,
+    onSuccess,
+    isPrebook = false,
+    isPublicCustomer = false,
+}) {
     const [defaultAddress, setDefaultAddress] = useState(null);
     const [openAddressModal, setOpenAddressModal] = useState(false);
     const [lastOrderId, setLastOrderId] = useState(null);
     const [creating, setCreating] = useState(false);
     const [quantity, setQuantity] = useState(1);
+    const [publicCustomerAddress, setPublicCustomerAddress] = useState(null);
 
-    // Load default address for authenticated users
+    // Get current address based on user type
+    const currentAddress = isPublicCustomer ? publicCustomerAddress : defaultAddress;
+
+    // Force reset public customer address when component mounts for public customers
     useEffect(() => {
-        if (!user?.uid) return;
+        if (isPublicCustomer) {
+            setPublicCustomerAddress(null);
+        }
+    }, [isPublicCustomer]);
+
+
+    // Load default address for authenticated users (not for public customers)
+    useEffect(() => {
+        if (!user?.uid || isPublicCustomer) return;
         (async () => {
             try {
                 const userRef = doc(db, "users", user.uid);
@@ -40,7 +60,7 @@ export default function CheckoutForm({ user, product, affiliateCode, onSuccess }
                 toast.error("Failed to load addresses");
             }
         })();
-    }, [user?.uid]);
+    }, [user?.uid, isPublicCustomer]);
 
     // affiliate fallbacks
     function getUrlRef() {
@@ -66,8 +86,27 @@ export default function CheckoutForm({ user, product, affiliateCode, onSuccess }
                 null)
             : null);
 
+    // build items (cart vs single product)
+    const items = (cartItems && cartItems.length)
+        ? cartItems.map(i => ({
+            productId: i.id || i.productId,
+            productName: i.name || i.productName,
+            price: Number(i.price || 0),
+            quantity: Number(i.qty || i.quantity || 1),
+            total: Number(i.price || 0) * Number(i.qty || i.quantity || 1),
+        }))
+        : product ? [{
+            productId: product.id,
+            productName: product.name,
+            price: Number(product.price || 0),
+            quantity: Number(quantity || 1),
+            total: Number(product.price || 0) * Number(quantity || 1)
+        }] : [];
+
+    const computedTotal = items.reduce((s, it) => s + (it.total || 0), 0);
+
     const handlePayNow = async () => {
-        if (!defaultAddress) {
+        if (!currentAddress) {
             toast.error("Please add a delivery address first");
             setOpenAddressModal(true);
             return;
@@ -76,26 +115,26 @@ export default function CheckoutForm({ user, product, affiliateCode, onSuccess }
         setCreating(true);
         try {
             const payload = {
-                productId: product.id,
-                productName: product.name,
-                price: Number(product.price),
-                quantity,
-                total: Number(product.price) * Number(quantity),
+                items,
+                total: computedTotal,
                 affiliateCode: effectiveAffiliateCode,
+                customerUid: user?.uid || null, // important for self-referral guard
                 customer: {
-                    name: defaultAddress.fullName,
-                    email: user?.email || defaultAddress.contactEmail,
-                    phone: defaultAddress.phone,
+                    name: currentAddress.fullName,
+                    email: user?.email || currentAddress.contactEmail,
+                    phone: currentAddress.phone,
                     address: {
-                        addressLine: defaultAddress.addressLine1,
-                        city: defaultAddress.city,
-                        state: defaultAddress.state,
-                        pincode: defaultAddress.pincode,
-                        country: defaultAddress.country,
-                        landmark: defaultAddress.landmark || "",
-                        addressLine2: defaultAddress.addressLine2 || "",
+                        addressLine: currentAddress.addressLine1,
+                        addressLine2: currentAddress.addressLine2 || "",
+                        city: currentAddress.city,
+                        state: currentAddress.state,
+                        pincode: currentAddress.pincode,
+                        country: currentAddress.country,
+                        landmark: currentAddress.landmark || "",
                     },
                 },
+                type: isPrebook ? "prebook" : (isPublicCustomer ? "public" : "affiliate"),
+                isPrebook: Boolean(isPrebook),
             };
 
             const res = await fetch("/api/create-order", {
@@ -105,7 +144,7 @@ export default function CheckoutForm({ user, product, affiliateCode, onSuccess }
             });
             const data = await res.json();
 
-            const ok = res.ok && (data?.ok === true || data?.success === true || data?.orderId);
+            const ok = res.ok && (data?.ok === true || data?.orderId);
             if (!ok) throw new Error(data?.error || "Order creation failed");
 
             toast.success("Order created! (payment next)");
@@ -125,7 +164,7 @@ export default function CheckoutForm({ user, product, affiliateCode, onSuccess }
                     const conf = await r2.json();
                     if (r2.ok && conf.ok) {
                         toast.success(`Order marked paid (commission ₹${conf.commission || 0})`);
-                        onSuccess?.(); // now close modal after it’s PAID
+                        onSuccess?.();
                     } else {
                         throw new Error(conf.error || "Confirm failed");
                     }
@@ -143,7 +182,7 @@ export default function CheckoutForm({ user, product, affiliateCode, onSuccess }
 
     return (
         <>
-            <div className="rounded-lg border p-4 space-y-4">
+            <div className="rounded-lg border p-4 space-y-4 max-h-[70vh] overflow-auto">
                 <div className="flex items-center justify-between">
                     <h3 className="font-semibold">Delivery Address</h3>
                     <Button
@@ -152,90 +191,55 @@ export default function CheckoutForm({ user, product, affiliateCode, onSuccess }
                         className="cursor-pointer"
                         onClick={() => setOpenAddressModal(true)}
                     >
-                        {defaultAddress ? "Edit Address" : "Add Address"}
+                        {currentAddress ? "Edit Address" : "Add Address"}
                     </Button>
                 </div>
 
-                {defaultAddress ? (
+                {currentAddress ? (
                     <div className="text-sm text-gray-700">
                         <div className="font-medium">
-                            {defaultAddress.fullName} — {defaultAddress.phone}
+                            {currentAddress.fullName} — {currentAddress.phone}
                         </div>
                         <div>
-                            {defaultAddress.addressLine1}
-                            {defaultAddress.addressLine2 ? `, ${defaultAddress.addressLine2}` : ""}
+                            {currentAddress.addressLine1}
+                            {currentAddress.addressLine2 ? `, ${currentAddress.addressLine2}` : ""}
                         </div>
                         <div>
-                            {defaultAddress.city}, {defaultAddress.state} {defaultAddress.pincode}
+                            {currentAddress.city}, {currentAddress.state} {currentAddress.pincode}
                         </div>
-                        <div>{defaultAddress.country}</div>
-                        {defaultAddress.landmark && <div>Landmark: {defaultAddress.landmark}</div>}
+                        <div>{currentAddress.country}</div>
+                        {currentAddress.landmark && <div>Landmark: {currentAddress.landmark}</div>}
                     </div>
                 ) : (
                     <p className="text-sm text-gray-500">No address yet.</p>
                 )}
 
-                {effectiveAffiliateCode && (
+                {/* Affiliate badge (don't show for prebook to avoid confusion) */}
+                {effectiveAffiliateCode && !isPrebook && (
                     <div className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1 w-fit">
                         Referral applied: <b>{effectiveAffiliateCode}</b>
                     </div>
                 )}
 
-                <div className="border-t pt-3">
-                    <div className="flex items-center justify-between text-sm">
-                        <span>{product.name}</span>
-                        <span>₹{product.price}</span>
-                    </div>
-                    <div className="flex items-center justify-between mt-3">
-                        <span className="text-sm">Quantity</span>
-                        <div className="flex items-center gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="cursor-pointer"
-                                disabled={creating || quantity <= 1}
-                                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                            >
-                                −
-                            </Button>
-                            <Input
-                                type="number"
-                                min={1}
-                                max={99}
-                                step={1}
-                                value={quantity}
-                                onChange={(e) => {
-                                    const next = parseInt(e.target.value || "1", 10);
-                                    if (Number.isNaN(next)) {
-                                        setQuantity(1);
-                                    } else {
-                                        setQuantity(Math.max(1, Math.min(99, next)));
-                                    }
-                                }}
-                                className="w-16 h-9 text-center"
-                                disabled={creating}
-                            />
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="cursor-pointer"
-                                disabled={creating}
-                                onClick={() => setQuantity((q) => Math.min(99, q + 1))}
-                            >
-                                +
-                            </Button>
+                {/* Items summary */}
+                <div className="border-t pt-3 space-y-2">
+                    {items.map((it) => (
+                        <div key={it.productId} className="flex justify-between text-sm">
+                            <div>
+                                {it.productName} {it.quantity > 1 ? `x${it.quantity}` : null}
+                            </div>
+                            <div>₹{it.total}</div>
                         </div>
-                    </div>
+                    ))}
+
                     <div className="flex items-center justify-between font-semibold mt-2">
                         <span>Total</span>
-                        <span>₹{Number(product.price) * Number(quantity)}</span>
+                        <span>₹{computedTotal}</span>
                     </div>
                 </div>
 
                 <Button className="w-full cursor-pointer" onClick={handlePayNow} disabled={creating}>
-                    {creating ? "Creating Order..." : "Pay Now"}
+                    {creating ? "Creating Order..." : (isPrebook ? "Prebook (Create)" : (isPublicCustomer ? "Buy Now" : "Pay Now"))}
                 </Button>
 
                 {/* Optional: keep the dev button too */}
@@ -270,7 +274,6 @@ export default function CheckoutForm({ user, product, affiliateCode, onSuccess }
                             Mark Paid (Dev Only)
                         </Button>
                     )}
-
             </div>
 
             <Modal
@@ -280,9 +283,14 @@ export default function CheckoutForm({ user, product, affiliateCode, onSuccess }
             >
                 <AddressForm
                     user={user}
-                    initialAddress={defaultAddress || undefined}
+                    initialAddress={isPublicCustomer ? null : (defaultAddress || undefined)}
                     onSave={(addr) => {
-                        setDefaultAddress(addr);
+                        // Store address in appropriate state based on user type
+                        if (isPublicCustomer) {
+                            setPublicCustomerAddress(addr);
+                        } else {
+                            setDefaultAddress(addr);
+                        }
                         setOpenAddressModal(false);
                     }}
                     onCancel={() => setOpenAddressModal(false)}
